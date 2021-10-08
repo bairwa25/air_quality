@@ -1,12 +1,14 @@
 /*****************************************************************
- * Board: Arduino Mega (ATMega2560)
- * Developed by: Kinnera Bharath Kumar Sai    Email: yourfriend9014@gmail.com
+ * Board: Arduino Uno (ATMega2560)
+ * Developed by: Ajay Bairwa    Email: yourfriend9014@gmail.com
  * 
- * ESP01 WiFi Module is used to connect to Internet 
+ * Nodemcu-ESP8266 WiFi Module is used to connect to Internet 
  * and send data to https://thingspeak.com server 
  * 
  * Output is shown using GRAPH on thinkspeak server.
  *  
+ * NOTE: 
+ * Internal 10 bit ADC (A0) is used to read the Analog output of the Temperature Sensor.
 ********************************************************************/
 /****************************************************************** 
  * 
@@ -28,8 +30,8 @@
  * ESP01   ->  Arduino
  * Vcc     ->  3.3V
  * GND     ->  GND
- * TxD     ->  Rx1 (Pin 19)
- * RxD     ->  Tx1 (Pin 18)
+ * TxD     ->  Rx1 (Pin 10)
+ * RxD     ->  Tx1 (Pin 11)
  * CH_PD   ->  3.3V
  * 
  * Serial Communication with PC through USB cable
@@ -65,11 +67,11 @@ LiquidCrystal_I2C lcd(0x27, 16,2);
 //                                                   DEFINES VARIABLES
 //---------------------------------------------------------------------------------------------------------------
 int buz = 5;        //buzzer connected to pin 7
-int fan = 6         // fan connected to pin 6
+int fan = 6;         // fan connected to pin 6
 int greenled = 8;   //green led connected to pin 8
 int redled = 9;     //red led connected to pin 9
 
-SoftwareSerial esp8266(2, 3);   // Rx, Tx
+SoftwareSerial Ser(2, 3); // RX, TX for Nodemcu-ESP8266
 
 //========== MQ135 Sensor variable
 int gas_sensor = A0;    //Sensor pin 
@@ -84,18 +86,11 @@ float c1 = 1.34; //Y-Intercept
 float R01 = 5.80; //Sensor Resistance 4.80
 
 //---------------------------------------------------------------------------------------------------------------
-//                                                  WI-FI AND CHANNEL DETAILS
-//---------------------------------------------------------------------------------------------------------------
-String apiKey = "8UZGITPS1BK2WOOX";  // "Thingspeak API key"
-String mySSID = "Xav!er";       // WiFi SSID
-String myPWD = "12345678"; // WiFi Password
-
-//---------------------------------------------------------------------------------------------------------------
 //                                                  SETUP
 //---------------------------------------------------------------------------------------------------------------
 void setup() {
-  Serial.begin(9600);      // PC to Arduino Serial Monitor
-  esp8266.begin(115200);   // Arduino to ESP01 Communication
+  Serial.begin(9600);     // PC to Arduino Serial Monitor
+  Ser.begin(115200);      // Arduino to ESP01 Communication or 115200
 
   lcd.init();                      // initialize the lcd 
   lcd.backlight();
@@ -104,7 +99,8 @@ void setup() {
   lcd.print(" Monitor System ");
   delay(4000);
   lcd.clear();
-
+  
+  
   pinMode(buz,OUTPUT);         // buzzer is connected as Output from Arduino
   pinMode(greenled,OUTPUT);    // green led is connected as output from Arduino
   pinMode(redled, OUTPUT);      // red led is connected as output from Arduino
@@ -112,10 +108,7 @@ void setup() {
   pinMode(gas_sensor, INPUT);
   pinMode(CO_sensor,INPUT);
 
-   //------------------// Connection of ESP8266 //------------------//
-  esp8266.println("AT");          // OK
-  esp8266.println("AT+RST");      //ready
-
+  //------------------// Connection of Nodemcu-ESP8266 //------------------//
   unsigned char check_connection=0;
   unsigned char times_check=0;
   Serial.println("Connecting to Wifi");
@@ -123,20 +116,16 @@ void setup() {
   delay(1000);
   lcd.clear();
   
-  String cmd ="AT+CWJAP=\"Xav!er\",\"12345678\"";     // \""+ mySSID +"\",\""+ myPWD +"\""
-  esp8266.println(cmd);
-  delay(5000);
-
   while(check_connection==0)
-  { 
-    if(esp8266.find("OK")) 
-    {          
+  {
+     if(Ser.find("\nWIFI CONNECTED.")==1 )
+     {
         Serial.println("WIFI CONNECTED.");
         lcd.print("WIFI CONNECTED.");
         delay(2000);
-        lcd.clear();
+        lcd.clear();   
         break;
-    }
+     }  
     times_check++;
     if(times_check>3) 
      {
@@ -146,17 +135,12 @@ void setup() {
         lcd.print("    Trying to   ");
         lcd.setCursor(0,1);
         lcd.print("  Reconnect...  ");
-        esp8266.println(cmd);
-        delay(5000);
+        delay(2000);
         lcd.clear();
       }
-    }
-    //------------------// Connection of ESP8266 //------------------//
-      
-  esp8266.println("AT+CWMODE=1");
-  esp8266.println("AT+CIFSR");
-  delay(1000);
- } 
+  }
+}
+  //------------------// Connection of Nodemcu-ESP8266 //------------------//
 //---------------------------------------------------------------------------------------------------------------
 //                                                  SETUP
 //---------------------------------------------------------------------------------------------------------------
@@ -165,7 +149,7 @@ void setup() {
 //---------------------------------------------------------------------------------------------------------------
 //                                               MAIN LOOP
 //---------------------------------------------------------------------------------------------------------------
-void loop() {
+void loop() { 
   //========== MQ135 Sensor variable
   float sensor_volt;          //Define variable for sensor voltage 
   float RS_gas;               //Define variable for sensor resistance  
@@ -209,47 +193,15 @@ void loop() {
   delay(5000);
 
 
-  //------Sending Data to ESP8266--------//
-  esp8266.println("AT+CIPMUX=0");             // To Set MUX = 0 for single wifi and MUX=1 for multiple
-
-  // TCP connection  AT+CIPSTART=4,"TCP","184.106.153.149",80
-  String cmd = "AT+CIPSTART=\"TCP\",\"";      // TCP connection with https://thingspeak.com server
-  cmd += "184.106.153.149";                   // IP addr of api.thingspeak.com
-  cmd += "\",80";                             // Port No. = 80
-
-  esp8266.println(cmd);                       // Display above Command on PC
-  Serial.println(cmd);                        // Send above command to Rx1, Tx1
-
-  if(esp8266.find("ERROR"))                   // If returns error in TCP connection
-  { 
-    Serial.println("TCP Connection Error");   // Display error msg to PC
-    return;                                   // Try TCP connection
-  }
-
-  // prepare GET string GET /update?api_key=8UZGITPS1BK2WOOX&field1=0.5&field2=5.0
-  String getStr = "GET /update?api_key=";   
-  getStr += apiKey;
-  getStr +="&field1=";
-  getStr += ppm;
-  getStr +="&field2=";
-  getStr += ppm1;
-  getStr += "\r\n\r\n"; 
-
-  cmd = "AT+CIPSEND=";                    // send data length 
-  cmd += String(getStr.length());
-
-  esp8266.println(cmd);                  // Send Data length command to Tx1, Rx1
-  Serial.println(cmd);                   // Display Data length on PC
-  esp8266.print(getStr);
-  
-  if(esp8266.find("SEND OK"))                      // If prompt opens //verify connection with cloud
-  {
-    Serial.println("Pushed whole data TO CLOUD");  // Display confirmation msg to PC
-    Serial.println(getStr);                        // Display GET String on PC
+  //------Sending Data to Nodemcu ESP8266--------//
+    Ser.print('<'); // Starting char
+    Ser.print(ppm); // float data
+    Ser.print(',');
+    Ser.print(ppm1); // float data
+    Ser.println('>'); // Ending char
     lcd.clear();
-    lcd.setCursor(0,0);                            // set cursor of lcd to 1st row and 1st column
     lcd.print("Upload to Cloud.");
-     
+
      //------Check condition for buzzer and LED--------//
     if (ppm >= 10 || ppm1 >= 10) {
       digitalWrite(greenled, LOW);
@@ -275,44 +227,13 @@ void loop() {
       lcd.clear();
     }
    //------Check condition for buzzer and LED--------//
-  }
-  else
-  { 
-    esp8266.println("AT+CIPCLOSE");         // Send Close Connection command to Rx1, Tx1
-    Serial.println("Uploading Error.");
-    Serial.println("AT+CIPCLOSE");          // Display Connection closed command on PC
-    lcd.clear();
-    lcd.setCursor(0,0);
-    lcd.print("Uploading Error.");
-     //------Check condition for buzzer and LED--------//
-    if (ppm >= 10 || ppm1 >= 10) {
-      digitalWrite(greenled, LOW);
-      digitalWrite(buz, HIGH);
-      digitalWrite(redled, HIGH);
-      digitalWrite(fan, HIGH);
-      lcd.setCursor(0,1);
-      lcd.print("Polluted Air ಠ_ಠ");
-      Serial.println("Alert!!!");
-      delay(2000); // wait 2000ms
-      lcd.clear();
-    }
-    else {
-      digitalWrite(greenled, HIGH);
-      digitalWrite(redled, LOW);
-      digitalWrite(buz, LOW);
-      digitalWrite(fan, LOW);
-      lcd.setCursor(0,1);
-      lcd.print(" Normal Air ◉‿◉ ");
-      Serial.println("Normal");
-      delay(2000); // wait 500ms
-      lcd.clear();
-    }
-     //------Check condition for buzzer and LED--------//
-  }
-  //------Sending Data to ESP8266--------//
+    
+  //--------------------------------------------//
 
 
-  
+
+ 
+
   // thingspeak free version needs 15-20 sec delay between every push
 //  delay(15000);                            // wait for 16sec
  }
