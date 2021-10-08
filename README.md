@@ -66,3 +66,8 @@ However, in order to get the real value of the gas concentration according to th
 </p>
 
 > **More details found in Document [here](assets/docs/Air_Pollution.pdf)**
+
+## Credit:
+- [AJAY KUMAR BAIRWA](https://www.linkedin.com/in/ajay-bairwa)
+- [SURENDRA KUMAR](https://www.instagram.com/suruu.meena/)
+- [ROHIT KUMAR](https://www.instagram.com/rohit_meena__23/)
