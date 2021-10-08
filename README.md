@@ -49,8 +49,12 @@ However, in order to get the real value of the gas concentration according to th
 
 <img src="https://user-images.githubusercontent.com/71394525/136596657-6a3f4ec0-f717-49f3-b5a0-3d45a17cadc2.png" width="300" height="50" />
 
-> More details for calculation [here](assests/docs/.pdf)
+> More details for calculation [here](assets/docs/Final_Paper.pdf)
 
+> Datasheets for:
+  - [MQ135](https://www.olimex.com/Products/Components/Sensors/Gas/SNS-MQ135/resources/SNS-MQ135.pdf)
+  - [MQ7](https://www.sparkfun.com/datasheets/Sensors/Biometric/MQ-7.pdf)
+ 
 ## Results:
 <p align="center">
   <img src="https://user-images.githubusercontent.com/71394525/136599171-dcd25636-8602-413f-8a2d-8820683af360.png" width="400" height="400" /> 
@@ -61,4 +65,4 @@ However, in order to get the real value of the gas concentration according to th
   <img align="center" src="https://user-images.githubusercontent.com/71394525/136599263-e84b990a-dead-48c4-b1c8-b88777c3dafe.png" width="700" height="400" />
 </p>
 
-> **More details found in Document [here]()**
+> **More details found in Document [here](assets/docs/Air_Pollution.pdf)**
